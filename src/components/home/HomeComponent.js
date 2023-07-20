@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CustomModal from '@/components/share/Modal';
-import Item from "../share/Item";
+import ProductCard from "../share/ProductCard";
 import {
     Drawer,
     Button,
@@ -9,18 +9,82 @@ import {
     IconButton,
   } from "@material-tailwind/react";
 import { useDispatch, useSelector } from "react-redux";
-import { increment, decrement } from '@/store/slices';
+import { increment, decrement } from '@/store/cartReducer';
+
+import slugify from "react-slugify";
+import RestRepository from '@/repositories/RestRepository';
+
 const HomeComponent=()=>{
     const [modalIsOpen, setModalIsOpen] = useState(false);
     const [openRight, setOpenRight] = useState(false);
     const openDrawerRight = () => setOpenRight(true);
     const closeDrawerRight = () => setOpenRight(false);
-    const counter = useSelector((state) => state);
+    const cart = useSelector((state) => state.cart);
     const dispatch = useDispatch();
-    console.log('co=',counter);
+    const [loading,setLoading]=useState(false);
+    const [products,setProducts]=useState([]);
+    console.log('co=',cart);
+    let isLoaded=0;
+    useEffect(() => {
+        if(!isLoaded)
+            {
+                isLoaded=1;
+                get();
+            }
+    },[]);
+    const initForm={
+        name:'',
+        slug_raw:'',
+        slug:'',
+        price:0,
+        dis_start_date:null,
+        dis_end_date:null
+    };
+    const [formData,setFormData]=useState(initForm);
     const openModal = (status) => {
         setModalIsOpen(status);
     };
+    const get=async()=>{
+        const api=await RestRepository.get('/product/index',{});
+        console.log('api=',api);
+        if(api.error == undefined){
+            setProducts(api);
+        }
+    }
+    const handleSubmit=async(e)=>{
+        e.preventDefault();
+        console.log(formData);
+        if(formData.name == '')
+            alert('Name is required');
+        else if(formData.slug == '')
+            alert('slug is required');
+        else if(formData.price == '')
+            alert('Price is required');
+        else{
+            setLoading(true);
+            const api=await RestRepository.post('/product/store',formData);
+            console.log('api=',api);
+            if(api.error == undefined){
+                alert('Success');
+                setFormData(Object.assign(initForm,{}));
+            }
+            setLoading(false);
+        }
+    }
+    const handleGenerate=()=>setFormData({...formData,slug:slugify(formData.slug)});
+    const handleOnChange=e=>setFormData({...formData,[e.target.name]:e.target.value});
+
+    const handleAddToCart=(item)=>{
+        dispatch(increment({payload:item}));
+    }
+
+    const items=products.map(item => {
+        const isExist=cart.items.find(cart => cart.product_id == item.id);
+        return(
+            <ProductCard handleAddToCart={handleAddToCart} key={item.id} item={item} isExist={isExist}/>
+        )
+    })
+
     return(
         <>
             <main className="container mx-auto min-h-screen">
@@ -33,18 +97,14 @@ const HomeComponent=()=>{
                             <button
                                 className="text-blue-500 background-transparent font-bold uppercase px-6 py-2 text-sm outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150"
                                 type="button"
-                                onClick={() => dispatch(increment())}>
+                                onClick={() => openModal(true)}>
                                 Add Product
                             </button>
                         </div>
                     </div>
                     <div class="flex flex-wrap mt-4">
                         <div class="grid mb-8 border border-gray-200 rounded-lg shadow-sm dark:border-gray-700 md:mb-12 md:grid-cols-4">
-                            <Item></Item>
-                            <Item></Item>
-                            <Item></Item>
-                            <Item></Item>
-                            <Item></Item>
+                            {items}
                         </div>
                     </div>
                 </div>
@@ -80,22 +140,24 @@ const HomeComponent=()=>{
                                     <button
                                         className="p-1 ml-auto bg-transparent border-0 text-black opacity-5 float-right text-3xl leading-none font-semibold outline-none focus:outline-none"
                                         onClick={() => openModal(false)}>
-                                        <span className="bg-transparent text-black opacity-5 h-6 w-6 text-2xl block outline-none focus:outline-none">
-                                        ×
+                                        <span className="text-black text-2xl">
+                                            ×
                                         </span>
                                     </button>
                                 </div>
                                 <div className="relative p-6 flex-auto">
                                     <div>
-                                        <form className="mt-1 space-y-6" action="#" method="POST">
+                                        <form className="mt-1 space-y-6" onSubmit={handleSubmit}>
                                             <div class="border-b border-gray-900/10 pb-12 p-5">
                                                 <h2 class="text-base font-semibold leading-7 text-gray-900">Product Information</h2>
                                                 <div class="grid grid-cols-1  sm:grid-cols-6">
                                                     <div class="sm:col-span-6">
                                                         <label for="email" class="block text-sm font-medium leading-6 text-gray-900">Product Name</label>
                                                         <div class="mt-2">
-                                                            <input id="product_name" name="product_name" 
-                                                                autocomplete="Product Name" 
+                                                            <input id="product_name" name="name" 
+                                                                autocomplete="Product Name"
+                                                                value={formData.name}
+                                                                onChange={handleOnChange} 
                                                                 class="block w-full rounded-md border-0 py-1.5 
                                                                 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 
                                                                 placeholder:text-gray-400 focus:ring-2 focus:ring-inset 
@@ -108,23 +170,22 @@ const HomeComponent=()=>{
                                                             text-gray-900">Slug</label>
                                                         <div class="mt-2">
                                                             <div class="flex items-center rounded-md border-2 px-1 py-1">
-                                                                <input class="appearance-none w-full text-gray-700 mr-3 py-1 
-                                                                px-2 leading-tight rounded-md border-0 focus:outline-none" 
-                                                                type="text" placeholder="Jane Doe" aria-label="Full name" />
-                                                                <button class="flex-shrink-0 bg-teal-500 hover:bg-teal-700 
-                                                                border-teal-500 hover:border-teal-700 text-xs border-4 
-                                                                text-white rounded" type="button">
-                                                                    Generate
+                                                                <input 
+                                                                    onChange={handleOnChange} 
+                                                                    class="appearance-none w-full text-gray-700 mr-3 py-1 
+                                                                        px-2 leading-tight rounded-md border-0 focus:outline-none" 
+                                                                    type="text"
+                                                                    name="slug"
+                                                                    value={formData.slug} 
+                                                                    placeholder="Slug" 
+                                                                />
+
+                                                                <button onClick={()=>handleGenerate()} class="flex-shrink-0 bg-teal-500 hover:bg-teal-700 
+                                                                    border-teal-500 hover:border-teal-700 text-xs border-4 
+                                                                    text-white rounded" type="button">
+                                                                        Generate
                                                                 </button>
                                                             </div>
-                                                            {/* <input type="text" 
-                                                                name="slug" id="slug" 
-                                                                autocomplete="Slug" 
-                                                                class="block w-full rounded-md border-0 py-1.5 
-                                                                text-gray-900 shadow-sm ring-1 ring-inset 
-                                                                ring-gray-300 placeholder:text-gray-400 
-                                                                focus:ring-2 focus:ring-inset focus:ring-indigo-600 
-                                                                sm:text-sm sm:leading-6" /> */}
                                                         </div>
                                                     </div>
                                                     <div class="sm:col-span-3">
@@ -132,7 +193,9 @@ const HomeComponent=()=>{
                                                         class="block text-sm font-medium leading-6 
                                                         text-gray-900">Price</label>
                                                         <div class="mt-2">
-                                                            <input 
+                                                            <input
+                                                                onChange={handleOnChange}
+                                                                value={formData.price} 
                                                                 type="text" name="price" 
                                                                 id="price" autocomplete="Price" 
                                                                 class="block w-full rounded-md border-0 py-1.5 
@@ -147,8 +210,10 @@ const HomeComponent=()=>{
                                                         class="block text-sm font-medium 
                                                         leading-6 text-gray-900">Discount Start</label>
                                                         <div class="mt-2">
-                                                            <input 
-                                                                type="date" name="dis_start" 
+                                                            <input
+                                                                onChange={handleOnChange}
+                                                                value={formData.dis_start_date} 
+                                                                type="date" name="dis_start_date" 
                                                                 id="dis_start" autocomplete="Discount Start" 
                                                                 class="block w-full rounded-md border-0 py-1.5 
                                                                     text-gray-900 shadow-sm ring-1 ring-inset 
@@ -157,14 +222,16 @@ const HomeComponent=()=>{
                                                                     sm:text-sm sm:leading-6" />
                                                         </div>
                                                     </div>
-                                                   
+                                                    
                                                     <div class="sm:col-span-3">
                                                         <label for="dis_end" 
                                                         class="block text-sm font-medium 
                                                         leading-6 text-gray-900">Discount End</label>
                                                         <div class="mt-2">
-                                                            <input 
-                                                                type="date" name="dis_end" 
+                                                            <input
+                                                                onChange={handleOnChange}
+                                                                value={formData.dis_end_date} 
+                                                                type="date" name="dis_end_date" 
                                                                 id="dis_end" autocomplete="Discount Start" 
                                                                 class="block w-full rounded-md border-0 py-1.5 
                                                                     text-gray-900 shadow-sm ring-1 ring-inset 
@@ -174,10 +241,10 @@ const HomeComponent=()=>{
                                                         </div>
                                                     </div>
                                                     <div class="sm:col-span-3 mt-2">
-                                                        <button class="flex-shrink-0 px-1 py-1 bg-teal-500 hover:bg-teal-700 
+                                                        <button disabled={loading?true:null} class="flex-shrink-0 px-1 py-1 bg-teal-500 hover:bg-teal-700 
                                                             border-teal-500 hover:border-teal-700 text-xs border-4 
-                                                            text-white rounded" type="button">
-                                                            Submit
+                                                            text-white rounded" type="submit">
+                                                            {loading ? 'Loading..':'Submit'}
                                                         </button>
                                                     </div>
                                                 </div>
@@ -192,19 +259,13 @@ const HomeComponent=()=>{
                                         onClick={() => openModal(false)}>
                                         Close
                                     </button>
-                                    <button
-                                        className="bg-emerald-500 text-white active:bg-emerald-600 font-bold uppercase text-sm px-6 py-3 rounded shadow hover:shadow-lg outline-none focus:outline-none mr-1 mb-1 ease-linear transition-all duration-150"
-                                        type="button"
-                                        onClick={() => openModal(false)}>
-                                        Save Changes
-                                    </button>
                                 </div>
                             </div>
                             </div>
                         </div>
                         <div className="opacity-25 fixed inset-0 z-40 bg-black"></div>
                     </>
-                ) : null
+                ): null
             }
             
         </>
