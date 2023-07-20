@@ -7,11 +7,11 @@ const ProductCard=({item,isExist,handleAddToCart})=>{
         <div className="px-1 py-1 bg-teal-500 hover:bg-teal-700 
                 border-teal-500 hover:border-teal-700 text-xs border-4 inline-block
                 text-white rounded">
-                    <button className="px-1">+</button>
-                    <span className="px-1">55</span>
-                    <button className="px-1">-</button>
+                    <button onClick={()=>handleAddToCart(item,2)} className="px-1">+</button>
+                    <span className="px-1">{isExist.qty}</span>
+                    <button onClick={()=>handleAddToCart(item,3)} className="px-1">-</button>
             </div>  
-    ) : (<button onClick={()=>handleAddToCart(item)} className="ml-5 flex-shrink-0 px-1 py-1 bg-white-500 hover:bg-white-700 
+    ) : (<button onClick={()=>handleAddToCart(item,1)} className="ml-5 flex-shrink-0 px-1 py-1 bg-white-500 hover:bg-white-700 
     border-white-500 hover:border-white-700 text-xs
     text-black rounded" type="submit">
     Add to Cart

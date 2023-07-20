@@ -2,28 +2,22 @@
 import { useEffect, useState } from "react";
 import CustomModal from '@/components/share/Modal';
 import ProductCard from "../share/ProductCard";
-import {
-    Drawer,
-    Button,
-    Typography,
-    IconButton,
-  } from "@material-tailwind/react";
 import { useDispatch, useSelector } from "react-redux";
-import { increment, decrement } from '@/store/cartReducer';
-
+import { increment, decrement,addToCart } from '@/store/cartReducer';
 import slugify from "react-slugify";
 import RestRepository from '@/repositories/RestRepository';
 
+import Pagination from '@/components/share/Pagination';
+
 const HomeComponent=()=>{
     const [modalIsOpen, setModalIsOpen] = useState(false);
-    const [openRight, setOpenRight] = useState(false);
-    const openDrawerRight = () => setOpenRight(true);
-    const closeDrawerRight = () => setOpenRight(false);
-    const cart = useSelector((state) => state.cart);
+
+    const cartState = useSelector((state) => state.cart);
     const dispatch = useDispatch();
     const [loading,setLoading]=useState(false);
     const [products,setProducts]=useState([]);
-    console.log('co=',cart);
+    const [totalPage,setTotalPage]=useState(1);
+
     let isLoaded=0;
     useEffect(() => {
         if(!isLoaded)
@@ -44,11 +38,14 @@ const HomeComponent=()=>{
     const openModal = (status) => {
         setModalIsOpen(status);
     };
-    const get=async()=>{
-        const api=await RestRepository.get('/product/index',{});
-        console.log('api=',api);
+    const get=async(pageId)=>{
+        let endPoint='/product/index';
+        if(pageId != undefined)
+            endPoint=endPoint+"?pageId="+pageId;
+        const api=await RestRepository.get(endPoint,{});
         if(api.error == undefined){
-            setProducts(api);
+            setProducts(api.results);
+            setTotalPage(api.total);
         }
     }
     const handleSubmit=async(e)=>{
@@ -64,26 +61,64 @@ const HomeComponent=()=>{
             setLoading(true);
             const api=await RestRepository.post('/product/store',formData);
             console.log('api=',api);
-            if(api.error == undefined){
-                alert('Success');
-                setFormData(Object.assign(initForm,{}));
-            }
+            alert('Success');
+            get();
+            setFormData(Object.assign(initForm,{}));
+            setModalIsOpen(false);
+            // if(api.error == undefined){
+            //     alert('Success');
+            //     setFormData(Object.assign(initForm,{}));
+            //     setProducts(api.results);
+            //     setTotalPage(api.total);
+            //     setModalIsOpen(false);
+            // }
             setLoading(false);
         }
     }
     const handleGenerate=()=>setFormData({...formData,slug:slugify(formData.slug)});
     const handleOnChange=e=>setFormData({...formData,[e.target.name]:e.target.value});
+    const handleAddToCart=async(item,type)=>{
+        item.product_id=item.id;
+        item.qty=1;
+        if(type == 1)
+            {
+                const api=await RestRepository.post('/cart/store',item);
+                if(api.erro == undefined)
+                    dispatch(addToCart(item));
 
-    const handleAddToCart=(item)=>{
-        dispatch(increment({payload:item}));
+            }
+        else if(type == 2)
+            {
+                item.type=1;
+                const api=await RestRepository.post('/cart/inc_decr',item);
+                if(api.erro == undefined)
+                    dispatch(increment(item));
+            }
+        else if(type == 3){
+            item.type=2;
+                const api=await RestRepository.post('/cart/inc_decr',item);
+                if(api.erro == undefined)
+                    dispatch(decrement(item));
+        }
+            
     }
-
+    const handleSearch=async(e)=>{
+        const api=await RestRepository.get(`/product/index?name=${e.target.value}`,{});
+        console.log('api=',api);
+        if(api.error == undefined){
+            setProducts(api.results);
+            setTotalPage(api.total);
+        }
+    }
     const items=products.map(item => {
-        const isExist=cart.items.find(cart => cart.product_id == item.id);
+        const isExist=cartState.cart.find(cart => cart.product_id == item.id);
         return(
             <ProductCard handleAddToCart={handleAddToCart} key={item.id} item={item} isExist={isExist}/>
         )
     })
+    const handlePageClick=(page)=>{
+        get(page);
+    }
 
     return(
         <>
@@ -91,7 +126,12 @@ const HomeComponent=()=>{
                 <div className='mt-16'>
                     <div class="flex">
                         <div class="flex-auto w-64">
-                            <input className="border-2" style={{width:'100%',height:'40px',borderRadius:'5px'}} placeholder="Search Product" />
+                            <input
+                                onChange={handleSearch}
+                                name="psearch" 
+                                className="border-2" 
+                                style={{width:'100%',height:'40px',borderRadius:'5px'}} 
+                                placeholder="Search Product" />
                         </div>
                         <div class="flex-none">
                             <button
@@ -108,25 +148,11 @@ const HomeComponent=()=>{
                         </div>
                     </div>
                 </div>
+                <div className="mb-5">
+                    <Pagination handlePageClick={handlePageClick} totalPage={totalPage}></Pagination>
+                </div>
             </main>
-            <div>
-                <Drawer
-                    placement="right"
-                    open={openRight}
-                    onClose={closeDrawerRight}
-                    className="p-4">
-                    <div className="mb-6 flex items-center justify-between">
-                        <Typography variant="h5" color="blue-gray">
-                            Drawer on Right
-                        </Typography>
-                        <IconButton
-                            variant="text"
-                            color="blue-gray"
-                            onClick={closeDrawerRight}>
-                        </IconButton>
-                    </div>
-                </Drawer>
-            </div>
+            
             {
                 modalIsOpen ? (
                     <>
