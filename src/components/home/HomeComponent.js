@@ -84,7 +84,7 @@ const HomeComponent=()=>{
             {
                 const api=await RestRepository.post('/cart/store',item);
                 if(api.erro == undefined)
-                    dispatch(addToCart(item));
+                    dispatch(addToCart(api));
 
             }
         else if(type == 2)

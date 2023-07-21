@@ -9,6 +9,7 @@ const cartSlice = createSlice({
             const { payload } = param;
             payload.forEach(element => {
                 state.cart.push({
+                    tid:element.id,
                     product_id:element.product_id.id,
                     name:element.product_id.name,
                     qty:element.qty,
@@ -21,7 +22,8 @@ const cartSlice = createSlice({
 
             const { payload } = param;
             state.cart = [...state.cart, {
-                product_id:payload.id,
+                tid:payload.id,
+                product_id:payload.product_id,
                 name:payload.name,
                 qty:1,
                 price:payload.dis_price,

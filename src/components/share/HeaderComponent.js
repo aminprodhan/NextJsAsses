@@ -30,6 +30,12 @@ const HeaderComponent=()=>{
                 dispatch(addToCartBulk(api));
             }
     }
+    const handleRemove=async(item)=>{
+        console.log(item);
+        const api=await RestRepository.post('/cart/remove',{id:item.tid});
+        if(api.error == undefined)
+            dispatch(removeItem(item));
+    }
 
     const cartContent=cartState.cart.map(item => {
         return(
@@ -49,7 +55,7 @@ const HeaderComponent=()=>{
                     <div class="flex flex-1 items-end justify-between text-sm">
                         <p class="text-gray-500">Qty {item.qty}</p>
                         <div class="flex">
-                            <button type="button" onClick={()=>dispatch(removeItem(item))}
+                            <button type="button" onClick={()=>handleRemove(item)}
                             class="font-medium text-indigo-600 hover:text-indigo-500">Remove</button>
                         </div>
                     </div>
@@ -84,7 +90,7 @@ const HeaderComponent=()=>{
                     placement="right"
                     open={openRight}
                     onClose={closeDrawerRight}
-                    className="p-4">
+                    className="p-4 max-h-full overflow-auto">
                     <div className="mb-6 flex items-center justify-between">
                         {/* <Typography variant="h5" color="blue-gray">
                             My Cart
